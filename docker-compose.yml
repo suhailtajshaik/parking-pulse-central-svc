@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: parking-pulse-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: parkingpulse123
+      MONGO_INITDB_DATABASE: parking_pulse
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - parking-network
+
+  central-service:
+    build: .
+    container_name: parking-pulse-central
+    restart: unless-stopped
+    ports:
+      - "3000:3000"    # HTTP dashboard
+      - "50051:50051"  # gRPC server
+    environment:
+      - MONGODB_URI=mongodb://admin:parkingpulse123@mongodb:27017/parking_pulse?authSource=admin
+    depends_on:
+      - mongodb
+    networks:
+      - parking-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  parking-network:
+    driver: bridge
