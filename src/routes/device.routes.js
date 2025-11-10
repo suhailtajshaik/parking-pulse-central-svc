@@ -11,9 +11,43 @@ const {
 } = require('../validators/device-status.validator');
 
 /**
- * @route   POST /api/v1/devices/status
- * @desc    Receive device status update from Raspberry Pi
- * @access  Private (requires API key)
+ * @swagger
+ * /api/v1/devices/status:
+ *   post:
+ *     summary: Submit device status update
+ *     description: Endpoint for Raspberry Pi devices to submit their current status
+ *     tags: [Device Status]
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/PiStatus'
+ *     responses:
+ *       201:
+ *         description: Status update received successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/PiStatus'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       401:
+ *         description: Unauthorized - Invalid or missing API key
+ *       429:
+ *         description: Rate limit exceeded
  */
 router.post(
   '/status',
