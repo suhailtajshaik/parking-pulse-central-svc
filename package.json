@@ -31,7 +31,10 @@
     "morgan": "^1.10.0",
     "winston": "^3.11.0",
     "dotenv": "^16.3.0",
-    "compression": "^1.7.4"
+    "compression": "^1.7.4",
+    "prom-client": "^15.1.0",
+    "swagger-ui-express": "^5.0.0",
+    "swagger-jsdoc": "^6.2.8"
   },
   "devDependencies": {
     "jest": "^29.7.0",

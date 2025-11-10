@@ -3,9 +3,26 @@ const router = express.Router();
 const { getConnectionStatus } = require('../config/database');
 
 /**
- * @route   GET /health
- * @desc    Basic health check (for load balancers)
- * @access  Public
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Basic health check
+ *     description: Simple health check endpoint for load balancers and monitoring
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Service is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
  */
 router.get('/', (req, res) => {
   res.status(200).json({
@@ -42,9 +59,30 @@ router.get('/ready', (req, res) => {
 });
 
 /**
- * @route   GET /health/live
- * @desc    Liveness probe (for Kubernetes)
- * @access  Public
+ * @swagger
+ * /health/live:
+ *   get:
+ *     summary: Liveness probe
+ *     description: Kubernetes liveness probe endpoint to check if the service is running
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Service is alive
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: alive
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 uptime:
+ *                   type: number
+ *                   description: Process uptime in seconds
+ *                   example: 123.456
  */
 router.get('/live', (req, res) => {
   res.status(200).json({

@@ -13,25 +13,60 @@ services:
       MONGO_INITDB_DATABASE: parking_pulse
     volumes:
       - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
     networks:
       - parking-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
   central-service:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
     container_name: parking-pulse-central
     restart: unless-stopped
     ports:
-      - "3000:3000"    # HTTP dashboard
-      - "50051:50051"  # gRPC server
+      - "3000:3000"      # HTTP API
     environment:
+      - NODE_ENV=production
+      - PORT=3000
       - MONGODB_URI=mongodb://admin:parkingpulse123@mongodb:27017/parking_pulse?authSource=admin
+      - MONGODB_POOL_SIZE=10
+      - API_KEYS=dev-api-key-1,dev-api-key-2
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+      - RATE_LIMIT_WINDOW_MS=60000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - ALERT_TEMP_THRESHOLD_C=70
+      - ALERT_TEMP_CRITICAL_C=80
+      - ALERT_DEDUP_WINDOW_MS=300000
+      - DEVICE_OFFLINE_TIMEOUT_MS=120000
+      - LOG_LEVEL=info
+      - LOG_FORMAT=json
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - parking-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.parking-pulse.description=Central monitoring service for Parking Pulse IoT devices"
+      - "com.parking-pulse.version=1.0.0"
 
 volumes:
   mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
 
 networks:
   parking-network:
