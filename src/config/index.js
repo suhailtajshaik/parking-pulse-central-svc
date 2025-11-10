@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const config = {
   env: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port: parseInt(process.env.PORT, 10) || 8080,
 
   // MongoDB
   mongodb: {
