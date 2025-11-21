@@ -1,18 +1,45 @@
 {
   "name": "parking-pulse-central-svc",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Central monitoring service for Parking Pulse IoT devices",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
-  "keywords": [],
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "test:unit": "jest --testPathPattern=unit",
+    "test:integration": "jest --testPathPattern=integration",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix"
+  },
+  "keywords": ["iot", "parking", "monitoring", "raspberry-pi"],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@grpc/grpc-js": "^1.9.0",
-    "@grpc/proto-loader": "^0.7.0",
-    "express": "^5.1.0",
-    "mongoose": "^8.0.0"
+    "express": "^4.18.2",
+    "mongoose": "^8.0.0",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^7.1.0",
+    "express-validator": "^7.0.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "morgan": "^1.10.0",
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.0",
+    "compression": "^1.7.4",
+    "prom-client": "^15.1.0",
+    "swagger-ui-express": "^5.0.0",
+    "swagger-jsdoc": "^6.2.8"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.0",
+    "nodemon": "^3.0.0",
+    "eslint": "^8.55.0"
   }
 }

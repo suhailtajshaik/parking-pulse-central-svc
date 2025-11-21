@@ -3,11 +3,14 @@ const mongoose = require('mongoose');
 // Simple Pi Status Schema
 const piStatusSchema = new mongoose.Schema({
   piId: { type: String, required: true, index: true },
-  temperature: Number,
+  temperatureC: Number,
+  temperatureF: Number,
   cameraOk: Boolean,
+  systemOnline: { type: Boolean, default: true },
   isOnline: { type: Boolean, default: true },
   lastSeen: { type: Date, default: Date.now, index: true },
-  uptime: Number
+  uptime: Number,
+  deviceTimestamp: Number // Unix timestamp in milliseconds from the device
 }, { timestamps: true });
 
 // TTL index - keep data for 7 days

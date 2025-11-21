@@ -1,21 +1,27 @@
-# 🚗 Simplified Parking Pulse with gRPC
+# 🚗 Parking Pulse Central Service
 
-A minimal, modular parking monitoring system using gRPC for efficient communication between Raspberry Pi devices and a central server.
+A production-ready, enterprise-grade parking monitoring system using HTTP/REST for efficient communication between Raspberry Pi devices and a central server. Built with security, scalability, and observability in mind.
 
-## 📊 **System Overview**
+## 📊 System Overview
 
 ```
-┌─────────────────┐    gRPC (50051)    ┌─────────────────┐    MongoDB    ┌─────────────────┐
-│   Blue Gate Pi │ ──────────────────► │  Central Server │ ────────────► │   Historical    │
-└─────────────────┘                    │                 │               │     Data        │
-                                       │   (gRPC + HTTP) │               └─────────────────┘
-┌─────────────────┐    gRPC (50051)    │                 │    
-│   Pink Gate Pi │ ──────────────────► │   + Dashboard   │    HTTP (3000) ┌─────────────────┐
-└─────────────────┘                    └─────────────────┘ ─────────────► │   Web Monitor   │
-                                                                          └─────────────────┘
+┌─────────────────┐    HTTP/REST    ┌─────────────────┐    MongoDB    ┌─────────────────┐
+│   Blue Gate Pi  │ ──────────────► │  Central Server │ ────────────► │   Historical    │
+└─────────────────┘                 │                 │               │     Data        │
+                                    │  (Express.js)   │               └─────────────────┘
+┌─────────────────┐    HTTP/REST    │                 │
+│   Pink Gate Pi  │ ──────────────► │  + Production   │    HTTP (3000) ┌─────────────────┐
+└─────────────────┘                 │  + Monitoring   │ ─────────────► │  Prometheus &   │
+                                    └─────────────────┘                │  Swagger UI     │
+                                                                       └─────────────────┘
 ```
 
-## 🚀 **Quick Start**
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+ (LTS recommended)
+- Docker and Docker Compose
+- MongoDB 7.0+
 
 ### 1. Start Central Service
 
@@ -35,8 +41,11 @@ docker-compose ps
 # View logs
 docker-compose logs -f central-service
 
-# Access dashboard: http://localhost:3000
-# Health check: http://localhost:3000/health
+# Access services
+# - API: http://localhost:3000/api/v1
+# - Health: http://localhost:3000/health
+# - API Docs: http://localhost:3000/api-docs
+# - Metrics: http://localhost:3000/metrics
 ```
 
 #### Development Mode (Local Development)
@@ -46,17 +55,17 @@ cd parking-pulse-central-svc
 # Install dependencies
 npm install
 
+# Copy and configure environment
+cp .env.example .env
+# Edit .env with your configuration
+
 # Start MongoDB only (in Docker)
 docker-compose up -d mongodb
 
 # Start central service locally (in new terminal)
-node server.js
+npm run dev
 
-# Alternative: Auto-restart on changes
-npm install -g nodemon
-nodemon server.js
-
-# Access dashboard: http://localhost:3000
+# Access services at http://localhost:3000
 ```
 
 ### 2. Stop Services
@@ -66,8 +75,8 @@ nodemon server.js
 # Stop all services
 docker-compose down
 
-# Stop specific service
-docker-compose stop central-service
+# Stop and remove volumes (⚠️ deletes data)
+docker-compose down -v
 
 # Restart services
 docker-compose restart
@@ -81,102 +90,250 @@ docker-compose restart
 docker-compose stop mongodb
 ```
 
-### 3. Deploy to Raspberry Pis
-```bash
-# Copy to Pi
-scp -r parking-pulse-pi-status-edge-svc/ pi@blue-gate-pi:~/parking-pulse/
+## 📁 Architecture & File Structure
 
-# SSH to Pi and deploy
-ssh pi@blue-gate-pi
-cd ~/parking-pulse
-./deploy.sh blue-gate-pi 192.168.1.112:50051
-```
-
-### 4. Access Dashboard
-- **Web Dashboard**: http://localhost:3000
-- **Health Check**: http://localhost:3000/health
-- **gRPC Server**: localhost:50051
-
-## 📁 **File Structure**
-
-### Central Service (120 lines total)
+### Production-Ready MVC Architecture
 ```
 parking-pulse-central-svc/
-├── proto/parking.proto      # gRPC definitions (50 lines)
-├── models/simple.js         # MongoDB schemas (30 lines)  
-├── server.js               # Main server (120 lines)
-├── docker-compose.yml      # Docker setup (25 lines)
-└── Dockerfile             # Container config (15 lines)
+├── src/
+│   ├── app.js                      # Express app configuration
+│   ├── server.js                   # Server startup & graceful shutdown
+│   ├── config/
+│   │   ├── index.js                # Environment-based configuration
+│   │   ├── database.js             # MongoDB connection & pooling
+│   │   └── swagger.js              # OpenAPI/Swagger configuration
+│   ├── controllers/
+│   │   └── device.controller.js    # Request handlers
+│   ├── services/
+│   │   └── device.service.js       # Business logic layer
+│   ├── models/
+│   │   ├── PiStatus.js             # Device status schema
+│   │   └── Alert.js                # Alert schema with deduplication
+│   ├── routes/
+│   │   ├── index.js                # Route aggregation
+│   │   ├── device.routes.js        # Device endpoints
+│   │   └── health.routes.js        # Health check endpoints
+│   ├── middleware/
+│   │   ├── auth.js                 # API key authentication
+│   │   ├── rate-limiter.js         # Rate limiting
+│   │   ├── error-handler.js        # Global error handling
+│   │   └── request-logger.js       # HTTP request logging
+│   ├── validators/
+│   │   └── device-status.validator.js  # Input validation
+│   └── utils/
+│       ├── logger.js               # Winston structured logging
+│       ├── error-codes.js          # Standardized error codes
+│       └── metrics.js              # Prometheus metrics
+├── tests/
+│   ├── unit/                       # Unit tests
+│   └── integration/                # Integration tests
+├── docker-compose.yml              # Production Docker setup
+├── Dockerfile                      # Multi-stage production build
+├── package.json
+└── README.md
 ```
 
-### Edge Service (80 lines total)
+## 🔧 Key Features
+
+### ✅ Production-Ready Architecture
+- **RESTful API**: Standard HTTP/REST with versioning (`/api/v1`)
+- **MVC Pattern**: Clean separation of concerns
+- **Security Hardened**: API keys, rate limiting, helmet.js, input validation
+- **Type Safety**: Express-validator for request validation
+- **Error Handling**: Centralized with standardized error codes
+- **Graceful Shutdown**: Proper cleanup of resources
+
+### ✅ Observability & Monitoring
+- **Prometheus Metrics**: `/metrics` endpoint with comprehensive metrics
+  - HTTP request duration and counts
+  - Active device count
+  - Alert counters by type/severity
+  - Device temperature gauges
+  - Database operation metrics
+- **Structured Logging**: Winston with JSON output
+- **Health Checks**: Kubernetes-ready liveness and readiness probes
+- **API Documentation**: Interactive Swagger UI at `/api-docs`
+
+### ✅ Core Functionality
+- **Device Monitoring**: Temperature, camera status, system health
+- **Alert System**: Smart deduplication with configurable thresholds
+  - Temperature alerts (warning: 70°C, critical: 80°C)
+  - Camera failure detection
+  - Offline device detection (2-minute timeout)
+- **Historical Storage**: MongoDB with TTL indexes (7-day retention)
+- **Real-time Status**: Efficient caching and retrieval
+
+### ✅ Security Features
+- **API Key Authentication**: Secure endpoint access
+- **Rate Limiting**: Per-endpoint protection
+- **Helmet.js**: Security headers (CSP, XSS, etc.)
+- **CORS**: Configurable origin whitelist
+- **NoSQL Injection Protection**: Input sanitization
+- **Payload Size Limits**: 10KB request limit
+
+### ✅ Docker & Deployment
+- **Multi-stage Build**: Optimized production images
+- **Non-root User**: Security best practice
+- **Health Checks**: Built into Dockerfile and docker-compose
+- **Signal Handling**: dumb-init for proper process management
+- **Volume Management**: Persistent data storage
+- **Resource Limits**: Configurable in docker-compose
+
+### ✅ Testing & Quality
+- **Unit Tests**: Jest-based with 50%+ coverage target
+- **Integration Tests**: API endpoint testing with Supertest
+- **Code Quality**: ESLint configuration
+- **CI/CD Ready**: Test automation support
+
+## 📡 API Endpoints
+
+### Authentication
+All API endpoints (except health checks, metrics, and API docs) require an API key header:
 ```
-parking-pulse-pi-status-edge-svc/
-├── proto/parking.proto      # gRPC definitions (50 lines)
-├── pi-monitor.js           # Main client (80 lines)
-├── deploy.sh              # Deployment script (35 lines)
-└── package.json           # Dependencies (15 lines)
+X-API-Key: your-api-key-here
 ```
 
-## 🔧 **Key Features**
+### Device Status Endpoints
 
-### ✅ **Simplified Architecture**
-- **gRPC Communication**: Efficient binary protocol
-- **Modular Design**: Clear separation of concerns  
-- **Minimal Dependencies**: Only essential packages
-- **Easy Deployment**: Single script deployment
+#### Submit Device Status
+```http
+POST /api/v1/devices/status
+Content-Type: application/json
+X-API-Key: your-api-key
 
-### ✅ **Core Functionality**
-- **Temperature Monitoring**: CPU temperature tracking
-- **Camera Status**: Connection and functionality checks
-- **Real-time Alerts**: Temperature and camera alerts
-- **Historical Storage**: MongoDB with 7-day retention
-- **Live Dashboard**: Simple HTML interface
-
-### ✅ **Production Ready**
-- **Docker Support**: Complete containerization
-- **Systemd Integration**: Auto-start services on Pi
-- **Error Handling**: Graceful failure management
-- **Mock Data**: Works on non-Pi systems for testing
-
-## 📡 **gRPC Services**
-
-### ReportStatus
-```protobuf
-rpc ReportStatus(StatusRequest) returns (StatusResponse);
+{
+  "piId": "blue-gate-pi",
+  "temperatureC": 45.5,
+  "temperatureF": 113.9,
+  "cameraOk": true,
+  "systemOnline": true,
+  "deviceTimestamp": "2024-01-10T12:00:00Z"
+}
 ```
-- Pi devices send status updates
-- Server responds with alerts if any
 
-### GetStatus  
-```protobuf
-rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+#### Get All Devices
+```http
+GET /api/v1/devices?page=1&limit=20&sortBy=updatedAt&sortOrder=desc
+X-API-Key: your-api-key
 ```
-- Query current status of all or specific Pi
 
-### StreamStatus
-```protobuf
-rpc StreamStatus(StreamRequest) returns (stream StatusUpdate);
+#### Get Specific Device
+```http
+GET /api/v1/devices/blue-gate-pi
+X-API-Key: your-api-key
 ```
-- Real-time streaming of status updates
 
-## 🎯 **Running the Services**
+#### Get Device History
+```http
+GET /api/v1/devices/blue-gate-pi/history?page=1&limit=50
+X-API-Key: your-api-key
+```
 
-### Central Service Commands
+### Alert Endpoints
 
-#### Production (Docker)
+#### Get All Alerts
+```http
+GET /api/v1/devices/alerts/all?resolved=false
+X-API-Key: your-api-key
+```
+
+#### Get Device Alerts
+```http
+GET /api/v1/devices/alerts/blue-gate-pi
+X-API-Key: your-api-key
+```
+
+#### Resolve Alert
+```http
+PATCH /api/v1/devices/alerts/:alertId
+X-API-Key: your-api-key
+```
+
+### Health Endpoints (Public - No Auth)
+
+#### Basic Health Check
+```http
+GET /health
+```
+
+#### Liveness Probe
+```http
+GET /health/live
+```
+
+#### Readiness Probe
+```http
+GET /health/ready
+```
+
+#### Detailed Health
+```http
+GET /health/detailed
+```
+
+### Monitoring Endpoints (Public)
+
+#### Prometheus Metrics
+```http
+GET /metrics
+```
+
+#### API Documentation
+```http
+GET /api-docs
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file based on `.env.example`:
+
 ```bash
-# Start all services
-docker-compose up -d
+# Server Configuration
+NODE_ENV=production
+PORT=3000
 
-# Check status
-docker-compose ps
+# MongoDB Configuration
+MONGODB_URI=mongodb://admin:parkingpulse123@mongodb:27017/parking_pulse?authSource=admin
+MONGODB_POOL_SIZE=10
+
+# Security Configuration
+API_KEYS=your-secure-api-key-1,your-secure-api-key-2
+CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=60000      # 1 minute
+RATE_LIMIT_MAX_REQUESTS=100     # 100 requests per window
+
+# Alert Configuration
+ALERT_TEMP_THRESHOLD_C=70       # Warning threshold
+ALERT_TEMP_CRITICAL_C=80        # Critical threshold
+ALERT_DEDUP_WINDOW_MS=300000    # 5 minutes
+DEVICE_OFFLINE_TIMEOUT_MS=120000 # 2 minutes
+
+# Logging Configuration
+LOG_LEVEL=info                  # debug, info, warn, error
+LOG_FORMAT=json                 # json or simple
+```
+
+## 🐳 Docker Commands
+
+### Production Deployment
+
+```bash
+# Build and start services
+docker-compose up -d
 
 # View logs
 docker-compose logs -f central-service
+docker-compose logs -f mongodb
+
+# Check service status
+docker-compose ps
 
 # Restart services
-docker-compose restart
+docker-compose restart central-service
 
 # Stop all services
 docker-compose down
@@ -184,133 +341,310 @@ docker-compose down
 # Rebuild after code changes
 docker-compose build central-service
 docker-compose up -d central-service
+
+# Clean rebuild (no cache)
+docker-compose build --no-cache central-service
 ```
 
-#### Development (Local)
+### Database Management
+
 ```bash
-# Start MongoDB only
-docker-compose up -d mongodb
+# Connect to MongoDB shell
+docker exec -it parking-pulse-mongodb mongosh -u admin -p parkingpulse123
 
-# Start central service (new terminal)
-node server.js
+# View collections
+use parking_pulse
+show collections
 
-# Auto-restart on changes
-nodemon server.js
+# Query recent statuses
+db.pistatuses.find().sort({createdAt: -1}).limit(10)
 
-# Stop central service: Ctrl+C
-# Stop MongoDB: docker-compose stop mongodb
+# Query active alerts
+db.alerts.find({resolved: false})
+
+# Check database size
+db.stats()
 ```
 
-#### Health & Status Checks
+## 📊 Monitoring with Prometheus
+
+### Metrics Available
+
+The `/metrics` endpoint exposes the following metrics:
+
+**HTTP Metrics:**
+- `http_requests_total` - Total HTTP requests by method, route, status
+- `http_request_duration_seconds` - Request duration histogram
+
+**Application Metrics:**
+- `parking_pulse_active_devices` - Number of active devices
+- `parking_pulse_status_updates_total` - Total status updates by device
+- `parking_pulse_alerts_total` - Total alerts by type and severity
+- `parking_pulse_device_temperature_celsius` - Current device temperatures
+
+**Database Metrics:**
+- `database_operation_duration_seconds` - Database operation latency
+
+**Node.js Default Metrics:**
+- Process CPU usage, memory usage, event loop lag, etc.
+
+### Prometheus Configuration
+
+Add to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: 'parking-pulse-central'
+    static_configs:
+      - targets: ['localhost:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+```
+
+## 🧪 Testing
+
+### Run Tests
+
 ```bash
-# Health check
+# Run all tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# Run tests in watch mode (development)
+npm run test:watch
+
+# Run specific test file
+npm test -- tests/unit/error-codes.test.js
+```
+
+### Test Coverage
+
+Current test coverage:
+- Unit tests for error handling and utilities
+- Integration tests for health endpoints
+- Target: 50%+ coverage across statements, branches, functions, and lines
+
+## 🚨 Alert System
+
+### Alert Types
+
+1. **Temperature Alerts**
+   - **Warning**: `temperatureC > 70°C`
+   - **Critical**: `temperatureC > 80°C`
+   - Auto-resolved when temperature drops below threshold
+
+2. **Camera Alerts**
+   - Triggered when `cameraOk: false`
+   - Manual or auto-resolution
+
+3. **System Alerts**
+   - Triggered when `systemOnline: false`
+   - Indicates device malfunction
+
+4. **Offline Alerts**
+   - Auto-triggered after 2 minutes without status update
+   - Auto-resolved when device reconnects
+
+### Alert Deduplication
+
+- Prevents duplicate alerts within a configurable time window (default: 5 minutes)
+- Only creates new alerts if no similar unresolved alert exists
+- Reduces alert fatigue and noise
+
+## 🔐 Security Best Practices
+
+### Current Implementation
+
+✅ **Implemented:**
+- API key authentication for all device/alert endpoints
+- Rate limiting (configurable per endpoint)
+- Helmet.js security headers (CSP, XSS, HSTS, etc.)
+- CORS with origin whitelist
+- NoSQL injection protection
+- Input validation with express-validator
+- Request payload size limits
+- Non-root Docker container user
+- Secure MongoDB credentials
+
+### Recommended for Production
+
+🔄 **Additional Recommendations:**
+- Use HTTPS/TLS in production (reverse proxy like nginx)
+- Rotate API keys regularly
+- Use secrets management (AWS Secrets Manager, HashiCorp Vault)
+- Implement request signing for critical operations
+- Add WAF (Web Application Firewall)
+- Enable audit logging for compliance
+- Regular security scanning and updates
+
+## 📈 Performance Optimization
+
+### Database Optimization
+- Compound indexes on `piId` and `createdAt`
+- TTL index for automatic 7-day data retention
+- Connection pooling (configurable pool size)
+- Efficient queries with pagination
+
+### Application Optimization
+- Compression middleware for response payloads
+- In-memory caching for latest device status
+- Efficient alert deduplication logic
+- Graceful shutdown to prevent data loss
+
+### Docker Optimization
+- Multi-stage builds for smaller images
+- Layer caching for faster rebuilds
+- Health checks for orchestration
+- Resource limits in docker-compose
+
+## 🚨 Troubleshooting
+
+### Common Issues
+
+#### 1. MongoDB Connection Failed
+```bash
+# Check if MongoDB is running
+docker-compose ps mongodb
+
+# View MongoDB logs
+docker-compose logs mongodb
+
+# Restart MongoDB
+docker-compose restart mongodb
+
+# Test connection
+docker exec parking-pulse-mongodb mongosh --eval "db.adminCommand('ping')"
+```
+
+#### 2. Authentication Failed
+```bash
+# Verify API key in request header
+curl -H "X-API-Key: your-api-key" http://localhost:3000/api/v1/devices
+
+# Check configured API keys
+# Ensure API_KEYS in .env or docker-compose.yml matches
+```
+
+#### 3. Rate Limit Exceeded
+```bash
+# Response: 429 Too Many Requests
+# Wait for the rate limit window to reset
+# Or increase limits in configuration
+```
+
+#### 4. Health Check Failed
+```bash
+# Test health endpoints
 curl http://localhost:3000/health
+curl http://localhost:3000/health/live
+curl http://localhost:3000/health/ready
 
-# Dashboard
-curl http://localhost:3000
+# Check detailed health
+curl http://localhost:3000/health/detailed
 
-# Check Docker services
-docker-compose ps
+# View service logs
+docker-compose logs central-service
 ```
 
-### Edge Service Commands (on Pi)
+#### 5. High Memory Usage
 ```bash
-# Deploy Blue Gate Pi
-./deploy.sh blue-gate-pi 192.168.1.112:50051
+# Check container stats
+docker stats parking-pulse-central
 
-# Deploy Pink Gate Pi  
-./deploy.sh pink-gate-pi 192.168.1.112:50051
+# View detailed metrics
+curl http://localhost:3000/metrics | grep process_
 
-# Manual run (testing)
-PI_ID=blue-gate-pi SERVER_URL=192.168.1.112:50051 node pi-monitor.js
-
-# Service management
-sudo systemctl status parking-pulse
-sudo systemctl start parking-pulse
-sudo systemctl stop parking-pulse
-sudo systemctl restart parking-pulse
-
-# View logs
-sudo journalctl -u parking-pulse -f
-sudo journalctl -u parking-pulse --since "1 hour ago"
+# Restart service if needed
+docker-compose restart central-service
 ```
 
-### Testing Commands
+## 📚 API Documentation
+
+Interactive API documentation is available at:
+- **Swagger UI**: http://localhost:3000/api-docs
+
+Features:
+- Complete API schema definitions
+- Try-it-out functionality
+- Request/response examples
+- Authentication testing
+- Model schemas for all entities
+
+## 🎯 Migration from gRPC
+
+This system was migrated from gRPC to HTTP/REST for:
+- **Simplicity**: Standard HTTP tools and debugging
+- **Compatibility**: Works with any HTTP client
+- **Tooling**: Better API documentation and testing tools
+- **Accessibility**: Easier integration with web applications
+
+**Breaking Changes:**
+- gRPC port 50051 removed
+- All communication now via HTTP/REST on port 3000
+- API key authentication required (previously optional)
+- Response format changed to JSON
+
+## 🔄 Recent Updates
+
+### v2.0.0 - Production-Ready Release
+- ✅ Migrated from gRPC to HTTP/REST
+- ✅ Implemented MVC architecture
+- ✅ Added comprehensive security features
+- ✅ Integrated Prometheus metrics
+- ✅ Added Swagger API documentation
+- ✅ Multi-stage Docker builds
+- ✅ Comprehensive testing suite
+- ✅ Production-ready error handling and logging
+
+## 🎯 Roadmap & Future Enhancements
+
+### Planned Features
+- [ ] WebSocket support for real-time updates
+- [ ] Email/SMS alert notifications
+- [ ] Historical analytics dashboard
+- [ ] Camera snapshot storage and viewing
+- [ ] Multi-tenancy support
+- [ ] Advanced alerting rules engine
+- [ ] Grafana dashboard templates
+- [ ] Kubernetes deployment manifests
+
+## 📞 Support & Contribution
+
+### Getting Help
+1. Check this README and SETUP.md
+2. Review API documentation at `/api-docs`
+3. Check application logs
+4. Review test cases for examples
+5. Create an issue with detailed information
+
+### Development Workflow
 ```bash
-# Test gRPC connection from edge to central
-PI_ID=test-pi SERVER_URL=localhost:50051 INTERVAL=5000 node pi-monitor.js
+# Fork and clone the repository
+git clone <your-fork>
 
-# Check dashboard
-curl http://localhost:3000
+# Create feature branch
+git checkout -b feature/your-feature-name
 
-# Test with different Pi IDs
-PI_ID=blue-gate-pi SERVER_URL=localhost:50051 node pi-monitor.js &
-PI_ID=pink-gate-pi SERVER_URL=localhost:50051 node pi-monitor.js &
+# Make changes and test
+npm test
+
+# Commit with descriptive message
+git commit -m "Add: your feature description"
+
+# Push and create PR
+git push origin feature/your-feature-name
 ```
 
-## 📊 **Code Reduction Summary**
+## 📄 License
 
-| Component | Before | After | Reduction |
-|-----------|--------|-------|-----------|
-| Central Service | 400+ lines | 120 lines | **70%** |
-| Edge Service | 150+ lines | 80 lines | **47%** |
-| Configuration | 200+ lines | 50 lines | **75%** |
-| Dependencies | 8 packages | 3 packages | **62%** |
-| **Total** | **750+ lines** | **250 lines** | **67%** |
-
-## 🔍 **What Was Simplified**
-
-### ❌ **Removed Complexity**
-- Complex alert service with multiple severity levels
-- Extensive logging and Winston configuration
-- Multiple API endpoints and middleware
-- Complex configuration management
-- Email notification system
-- Detailed error handling and retry logic
-
-### ✅ **Kept Essential Features**
-- Temperature and camera monitoring
-- Basic alerting (high temp, camera issues)
-- Historical data storage
-- Real-time dashboard
-- gRPC communication
-- Docker deployment
-
-## 🚨 **Alerts**
-
-Simple alert system with three types:
-- **Temperature**: Triggered when > 70°C
-- **Camera**: Triggered when camera disconnected  
-- **Offline**: Automatic detection after 2 minutes
-
-## 📈 **Benefits of gRPC**
-
-1. **Performance**: Binary protocol, faster than HTTP/JSON
-2. **Type Safety**: Protocol buffers ensure data consistency
-3. **Streaming**: Real-time updates with server streaming
-4. **Language Agnostic**: Easy to add clients in other languages
-5. **Smaller Payload**: Efficient serialization
-
-## 🔧 **Environment Variables**
-
-### Central Service
-- `MONGODB_URI`: Database connection string
-
-### Edge Service  
-- `PI_ID`: Unique identifier (blue-gate-pi, pink-gate-pi)
-- `SERVER_URL`: gRPC server address (host:port)
-- `INTERVAL`: Reporting interval in milliseconds (default: 30000)
-
-## 🎯 **Next Steps**
-
-1. **Test on actual Raspberry Pi devices**
-2. **Add more Pi devices by changing PI_ID**
-3. **Customize alert thresholds as needed**
-4. **Scale horizontally by adding more central servers**
+ISC
 
 ---
 
-**Status**: ✅ **Simplified & Ready for Production**  
-**Total Code**: ~250 lines (67% reduction)  
-**Architecture**: gRPC-based microservices  
-**Deployment**: Docker + systemd
+**Status**: ✅ **Production-Ready**
+**Architecture**: HTTP/REST API with MVC pattern
+**Deployment**: Docker with multi-stage builds
+**Monitoring**: Prometheus metrics + Swagger docs
+**Security**: API keys, rate limiting, helmet.js, input validation
